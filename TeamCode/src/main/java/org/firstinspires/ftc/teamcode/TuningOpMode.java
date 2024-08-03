@@ -14,7 +14,10 @@ import com.qualcomm.robotcore.hardware.DcMotorEx;
 public class TuningOpMode extends OpMode{
     private DcMotorEx slideMotor;
     private PIDController slideController;
-    public static double p = 0.01, i = 0, d= 0.0001, f =0 ;
+    //Drum Only Constants
+    //public static double p = 0.01, i = 0, d= 0.0001, f =0 ;
+    public static double p = 0.00, i = 0, d= 0.0000, f =0 ;
+
 
     public static double target = 0;
 
@@ -31,7 +34,7 @@ public class TuningOpMode extends OpMode{
         slideController.setPID(p, i, d);
         double slidePos = slideMotor.getCurrentPosition();
 
-        double power = slideController.calculate(slidePos, target);
+        double power = slideController.calculate(slidePos, target) + f;
         slideMotor.setPower(power);
 
         telemetry.addData("Target Pos: ", target);

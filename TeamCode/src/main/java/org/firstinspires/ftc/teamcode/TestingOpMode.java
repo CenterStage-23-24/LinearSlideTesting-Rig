@@ -18,9 +18,10 @@ import java.util.concurrent.TimeUnit;
 public class TestingOpMode extends OpMode{
     private DcMotorEx slideMotor;
     private PIDController slideController;
-    private Timing.Timer timer = new Timing.Timer(999999999, TimeUnit.MINUTES);
-    private final double p = 0.01, i = 0, d= 0.0001, f =0 ;
-    private final double  maxTicks = 1500;
+    private Timing.Timer uptimeTimer = new Timing.Timer(999999999, TimeUnit.MINUTES);
+    private Timing.Timer stateTimer = new Timing.Timer(999999999, TimeUnit.MINUTES);
+    private final double p = 0.02, i = 0, d= 0.00015, f =0.05 ;
+    private final double  maxTicks = 850;
     private int atPosCounter= 0;
 
     private double prevTarget = 0;
@@ -28,6 +29,13 @@ public class TestingOpMode extends OpMode{
     private int positionsReached = 0;
 
     private double totalDistanceTicks;
+
+    public enum State {
+        active,
+        resting
+    };
+
+    State state = State.active;
 
 
 
@@ -39,36 +47,62 @@ public class TestingOpMode extends OpMode{
     }
 
     public void start() {
-        timer.start();
+        uptimeTimer.start();
+        stateTimer.start();
     }
 
     public void loop() {
-        double slidePos = slideMotor.getCurrentPosition();
+        State startState = state;
+        switch (state) {
+            case active:
+                uptimeTimer.resume();
+                double slidePos = slideMotor.getCurrentPosition();
 
-        if (atPos(slidePos, target)) {
-            atPosCounter++;
-        } else {
-            atPosCounter = 0;
+                if (atPos(slidePos, target)) {
+                    atPosCounter++;
+                } else {
+                    atPosCounter = 0;
+                }
+
+                if (atPosCounter >= 15){
+                    totalDistanceTicks += Math.abs(target - prevTarget);
+                    prevTarget = target;
+                    target = Math.random() * maxTicks;
+                    positionsReached++;
+                }
+                double power = slideController.calculate(slidePos, target) + f;
+                slideMotor.setPower(power);
+
+                telemetry.addData("Target Pos: ", target);
+                telemetry.addData("Current Pos: ", slidePos);
+                telemetry.addData("Power: ", power);
+                telemetry.addData("Ticks Traveled: ", totalDistanceTicks);
+                telemetry.addData("Positions Reached: ", positionsReached);
+                telemetry.addData("Uptime: ", uptimeTimer.elapsedTime());
+                telemetry.addData("State Time: ", stateTimer.elapsedTime());
+
+                if (stateTimer.elapsedTime() >= 5) {
+                    state = State.resting;
+                }
+                break;
+
+            case resting:
+                uptimeTimer.pause();
+                telemetry.addData("Resting Time: ", stateTimer.elapsedTime());
+                slideMotor.setPower(0);
+
+                if (stateTimer.elapsedTime() >= 5) {
+                    state = State.active;
+                }
+                break;
         }
 
-        if (atPosCounter >= 15){
-            totalDistanceTicks += Math.abs(target - prevTarget);
-            prevTarget = target;
-            target = Math.random() * maxTicks;
-            positionsReached++;
+        if (state != startState) {
+            stateTimer.start();
         }
-        double power = slideController.calculate(slidePos, target);
-        slideMotor.setPower(power);
-
-        telemetry.addData("Target Pos: ", target);
-        telemetry.addData("Current Pos: ", slidePos);
-        telemetry.addData("Power: ", power);
-        telemetry.addData("Ticks Traveled: ", totalDistanceTicks);
-        telemetry.addData("Positions Reached: ", positionsReached);
-        telemetry.addData("Uptime: ", timer.elapsedTime());
     }
 
     public boolean atPos(double current, double target){
-        return (Math.abs(target - current) < 5);
+        return (Math.abs(target - current) < 10);
     }
 }
