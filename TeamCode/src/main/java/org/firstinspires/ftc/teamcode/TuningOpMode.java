@@ -16,7 +16,7 @@ public class TuningOpMode extends OpMode{
     private PIDController slideController;
     //Drum Only Constants
     //public static double p = 0.01, i = 0, d= 0.0001, f =0 ;
-    public static double p = 0.00, i = 0, d= 0.0000, f =0 ;
+    public static double p = 0.04, i = 0.0, d= 0.00, f =0.05 ;
 
 
     public static double target = 0;

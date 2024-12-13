@@ -10,21 +10,23 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 
-import java.util.Timer;
 import java.util.concurrent.TimeUnit;
 
 @Config
 @TeleOp(name  = "Slide Testing Op-Mode V0.0.1")
-public class TestingOpMode extends OpMode{
+public class TestingOpMode  extends OpMode{
     private DcMotorEx slideMotor;
     private PIDController slideController;
     private Timing.Timer uptimeTimer = new Timing.Timer(999999999, TimeUnit.MINUTES);
     private Timing.Timer stateTimer = new Timing.Timer(999999999, TimeUnit.MINUTES);
-    private final double p = 0.02, i = 0, d= 0.00015, f =0.05 ;
+    private final double p = 0.02, i = 0.00015, d= 0.00015, f =0.05 ;
     private final double  maxTicks = 850;
     private int atPosCounter= 0;
+    private int posTimeoutCounter = 0;
+    private int slidePos = 0;
 
     private double prevTarget = 0;
+    private int prevPose;
     private double target = 0;
     private int positionsReached = 0;
 
@@ -56,7 +58,9 @@ public class TestingOpMode extends OpMode{
         switch (state) {
             case active:
                 uptimeTimer.resume();
-                double slidePos = slideMotor.getCurrentPosition();
+
+                prevPose = slidePos;
+                slidePos = slideMotor.getCurrentPosition();
 
                 if (atPos(slidePos, target)) {
                     atPosCounter++;
@@ -64,11 +68,18 @@ public class TestingOpMode extends OpMode{
                     atPosCounter = 0;
                 }
 
-                if (atPosCounter >= 15){
+                if (slidePos == prevPose) {
+                    posTimeoutCounter++;
+                } else {
+                    posTimeoutCounter = 0;
+                }
+
+                if (atPosCounter >= 15 || posTimeoutCounter >= 150){
                     totalDistanceTicks += Math.abs(target - prevTarget);
                     prevTarget = target;
                     target = Math.random() * maxTicks;
                     positionsReached++;
+                    posTimeoutCounter = 0;
                 }
                 double power = slideController.calculate(slidePos, target) + f;
                 slideMotor.setPower(power);
